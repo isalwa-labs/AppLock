@@ -1,0 +1,6 @@
+{
+  "name": "AppLock",
+  "description": "Production-grade, highly secure AppLock application with biometric protection and robust background service tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
