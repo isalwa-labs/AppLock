@@ -20,6 +20,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.Fingerprint
@@ -479,15 +484,19 @@ fun AppLockOverlayContent(
                 ) {
                     repeat(4) { index ->
                         val active = index < enteredPin.length
+                        val dotSize by animateDpAsState(
+                            targetValue = if (active) 20.dp else 14.dp,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                        )
+                        val dotColor by animateColorAsState(
+                            targetValue = if (isPinError) Color(0xFFEF4444)
+                            else if (active) Color(0xFF38BDF8)
+                            else Color(0xFF334155)
+                        )
                         Box(
                             modifier = Modifier
-                                .size(18.dp)
-                                .background(
-                                    if (isPinError) Color(0xFFEF4444)
-                                    else if (active) Color(0xFF38BDF8)
-                                    else Color(0xFF334155),
-                                    CircleShape
-                                )
+                                .size(dotSize)
+                                .background(dotColor, CircleShape)
                         )
                     }
                 }
@@ -519,6 +528,7 @@ fun AppLockOverlayContent(
                                         .weight(1f)
                                         .aspectRatio(1.2f)
                                         .background(Color(0xFF1E293B), RoundedCornerShape(16.dp))
+                                        .clip(RoundedCornerShape(16.dp))
                                         .clickable {
                                             isPinError = false
                                             when (key) {

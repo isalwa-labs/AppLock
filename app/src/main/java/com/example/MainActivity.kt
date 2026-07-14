@@ -11,6 +11,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +29,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -137,263 +140,274 @@ fun AppLockDashboardScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            if (activeTab == 0) {
-                // APPLICATIONS TAB
-                // App Search Bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search installed applications...", color = Color(0xFF64748B)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF38BDF8),
-                        unfocusedBorderColor = Color(0xFF334155)
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF64748B)) },
-                    singleLine = true
-                )
+            AnimatedContent(
+                targetState = activeTab,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(220)) + slideInHorizontally(animationSpec = tween(220), initialOffsetX = { x -> if (targetState > initialState) x else -x }))
+                        .togetherWith(fadeOut(animationSpec = tween(220)) + slideOutHorizontally(animationSpec = tween(220), targetOffsetX = { x -> if (targetState > initialState) -x else x }))
+                },
+                label = "tab_transition",
+                modifier = Modifier.weight(1f).fillMaxWidth()
+            ) { targetTab ->
+                if (targetTab == 0) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // App Search Bar
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Search installed applications...", color = Color(0xFF64748B)) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 8.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF38BDF8),
+                                unfocusedBorderColor = Color(0xFF334155)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF64748B)) },
+                            singleLine = true
+                        )
 
-                // Quick Service Status Info Banner
-                if (!isServiceRunning) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 10.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF7F1D1D)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Warning, contentDescription = "Warning", tint = Color.White)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("Protection is Disabled", fontWeight = FontWeight.Bold, color = Color.White)
-                                Text("Toggle protection service in the Settings tab.", fontSize = 12.sp, color = Color(0xFFFECACA))
+                        // Quick Service Status Info Banner
+                        if (!isServiceRunning) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 10.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF7F1D1D)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Warning, contentDescription = "Warning", tint = Color.White)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text("Protection is Disabled", fontWeight = FontWeight.Bold, color = Color.White)
+                                        Text("Toggle protection service in the Settings tab.", fontSize = 12.sp, color = Color(0xFFFECACA))
+                                    }
+                                }
                             }
                         }
-                    }
-                }
 
-                // Apps List
-                val filteredApps = installedApps.filter {
-                    it.appName.contains(searchQuery, ignoreCase = true) || 
-                    it.packageName.contains(searchQuery, ignoreCase = true)
-                }
+                        // Apps List
+                        val filteredApps = installedApps.filter {
+                            it.appName.contains(searchQuery, ignoreCase = true) || 
+                            it.packageName.contains(searchQuery, ignoreCase = true)
+                        }
 
-                if (filteredApps.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Inbox, contentDescription = "No apps", tint = Color(0xFF334155), modifier = Modifier.size(60.dp))
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text("No Applications Found", color = Color(0xFF64748B), fontWeight = FontWeight.SemiBold)
+                        if (filteredApps.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.Inbox, contentDescription = "No apps", tint = Color(0xFF334155), modifier = Modifier.size(60.dp))
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text("No Applications Found", color = Color(0xFF64748B), fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .padding(horizontal = 24.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                items(filteredApps) { app ->
+                                    AppItemRow(
+                                        app = app,
+                                        onLockToggled = {
+                                            viewModel.toggleAppLock(app.packageName, app.appName, app.isLocked)
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 } else {
+                    // SETTINGS & PERMISSIONS TAB
                     LazyColumn(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
+                            .fillMaxSize()
                             .padding(horizontal = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(filteredApps) { app ->
-                            AppItemRow(
-                                app = app,
-                                onLockToggled = {
-                                    viewModel.toggleAppLock(app.packageName, app.appName, app.isLocked)
+                        // Global Guard Controller Card
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, Color(0xFF1E293B))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(20.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "AppLock Protection",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 18.sp,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = if (isServiceRunning) "Running persistently in background" else "Security engine is turned off",
+                                            fontSize = 13.sp,
+                                            color = if (isServiceRunning) Color(0xFF10B981) else Color(0xFF94A3B8)
+                                        )
+                                    }
+                                    Switch(
+                                        checked = isServiceRunning,
+                                        onCheckedChange = { viewModel.toggleService(it) },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = Color.White,
+                                            checkedTrackColor = Color(0xFF38BDF8),
+                                            uncheckedThumbColor = Color(0xFF64748B),
+                                            uncheckedTrackColor = Color(0xFF1E293B)
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        // Passcode PIN Config Card
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, Color(0xFF1E293B))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(20.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "Master Unlock PIN",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            color = Color.White
+                                        )
+                                        var isPinVisible by remember { mutableStateOf(false) }
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                text = "Current: ${if (isPinVisible) masterPin else "••••"}",
+                                                fontSize = 13.sp,
+                                                color = Color(0xFF38BDF8)
+                                            )
+                                            IconButton(
+                                                onClick = { isPinVisible = !isPinVisible },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (isPinVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                    contentDescription = "Toggle PIN visibility",
+                                                    tint = Color(0xFF94A3B8),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Button(
+                                        onClick = { showPinDialog = true },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text("Change PIN", color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+
+                        // System Permissions Control Panel Header
+                        item {
+                            Text(
+                                text = "Core Requirements",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = Color.White,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+
+                        // Usage Stats Card
+                        item {
+                            PermissionRowCard(
+                                title = "Usage Access",
+                                description = "Required to detect when locked applications are launched.",
+                                granted = permissionStates.hasUsageStats,
+                                onRequest = {
+                                    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    context.startActivity(intent)
                                 }
                             )
                         }
-                    }
-                }
-            } else {
-                // SETTINGS & PERMISSIONS TAB
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Global Guard Controller Card
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color(0xFF1E293B))
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "AppLock Protection",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = if (isServiceRunning) "Running persistently in background" else "Security engine is turned off",
-                                        fontSize = 13.sp,
-                                        color = if (isServiceRunning) Color(0xFF10B981) else Color(0xFF94A3B8)
-                                    )
-                                }
-                                Switch(
-                                    checked = isServiceRunning,
-                                    onCheckedChange = { viewModel.toggleService(it) },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = Color(0xFF38BDF8),
-                                        uncheckedThumbColor = Color(0xFF64748B),
-                                        uncheckedTrackColor = Color(0xFF1E293B)
-                                    )
-                                )
-                            }
-                        }
-                    }
 
-                    // Passcode PIN Config Card
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color(0xFF1E293B))
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Master Unlock PIN",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        color = Color.White
-                                    )
-                                    var isPinVisible by remember { mutableStateOf(false) }
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(
-                                            text = "Current: ${if (isPinVisible) masterPin else "••••"}",
-                                            fontSize = 13.sp,
-                                            color = Color(0xFF38BDF8)
-                                        )
-                                        IconButton(
-                                            onClick = { isPinVisible = !isPinVisible },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = if (isPinVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                contentDescription = if (isPinVisible) "Toggle PIN visibility" else "Toggle PIN visibility",
-                                                tint = Color(0xFF94A3B8),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
+                        // Overlay Card
+                        item {
+                            PermissionRowCard(
+                                title = "Display Over Other Apps",
+                                description = "Required to draw the secure authentication overlay screen.",
+                                granted = permissionStates.hasOverlay,
+                                onRequest = {
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:${context.packageName}")
+                                    ).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+
+                        // Battery ignoring Card
+                        item {
+                            PermissionRowCard(
+                                title = "Ignore Battery Optimizations",
+                                description = "Prevents Android OS from killing the lock tracker in background.",
+                                granted = permissionStates.isIgnoringBattery,
+                                onRequest = {
+                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+
+                        // Notification Card
+                        item {
+                            PermissionRowCard(
+                                title = "Notification Permission",
+                                description = "Required on Android 13+ to host the persistent foreground service.",
+                                granted = permissionStates.hasNotification,
+                                onRequest = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                 }
-                                Button(
-                                    onClick = { showPinDialog = true },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Text("Change PIN", color = Color.White)
-                                }
-                            }
+                            )
                         }
-                    }
-
-                    // System Permissions Control Panel Header
-                    item {
-                        Text(
-                            text = "Core Requirements",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = Color.White,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-
-                    // Usage Stats Card
-                    item {
-                        PermissionRowCard(
-                            title = "Usage Access",
-                            description = "Required to detect when locked applications are launched.",
-                            granted = permissionStates.hasUsageStats,
-                            onRequest = {
-                                val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                                context.startActivity(intent)
-                            }
-                        )
-                    }
-
-                    // Overlay Card
-                    item {
-                        PermissionRowCard(
-                            title = "Display Over Other Apps",
-                            description = "Required to draw the secure authentication overlay screen.",
-                            granted = permissionStates.hasOverlay,
-                            onRequest = {
-                                val intent = Intent(
-                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    Uri.parse("package:${context.packageName}")
-                                ).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                                context.startActivity(intent)
-                            }
-                        )
-                    }
-
-                    // Battery ignoring Card
-                    item {
-                        PermissionRowCard(
-                            title = "Ignore Battery Optimizations",
-                            description = "Prevents Android OS from killing the lock tracker in background.",
-                            granted = permissionStates.isIgnoringBattery,
-                            onRequest = {
-                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                    data = Uri.parse("package:${context.packageName}")
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                                context.startActivity(intent)
-                            }
-                        )
-                    }
-
-                    // Notification Card
-                    item {
-                        PermissionRowCard(
-                            title = "Notification Permission",
-                            description = "Required on Android 13+ to host the persistent foreground service.",
-                            granted = permissionStates.hasNotification,
-                            onRequest = {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            }
-                        )
                     }
                 }
             }
@@ -468,7 +482,10 @@ fun AppItemRow(
     onLockToggled: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onLockToggled),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, Color(0xFF1E293B))
